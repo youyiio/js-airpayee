@@ -1,0 +1,29 @@
+{
+  "name": "js-airpayee",
+  "version": "1.0.0",
+  "description": "AirPayee支付的JavaScript/TypeScript开发库",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:watch": "webpack --watch",
+    "build": "webpack"
+  },
+  "keywords": [
+    "airpayee",
+    "pay",
+    "alipay",
+    "wechat"
+  ],
+  "dependencies": {
+    "axios": "^0.27.2",
+    "lodash": "^4.17.21",
+    "md5-node": "^1.0.1"
+  },
+  "devDependencies": {
+    "webpack": "^5.74.0",
+    "webpack-cli": "^4.10.0"
+  },
+  "author": "developer@mytable.net",
+  "license": "Apache"
+}

@@ -1,0 +1,13 @@
+# all project
+.idea
+*.log
+.svn
+composer.lock
+package-lock.json
+
+# nodejs
+node_modules
+dist
+
+# my project
+examples/config.js
