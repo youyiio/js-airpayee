@@ -1,11 +1,16 @@
 //引入nodeJs内置的path模块
-const path = require('path');
+import path from 'path';
+import { fileURLToPath } from 'url'
 
-module.exports = {
+const __filenameNew = fileURLToPath(import.meta.url)
+
+const __dirname = path.dirname(__filenameNew)
+
+export default {
   // 模式
   mode: 'development', // 也可以使用 production，产品模式会对代码进行压缩
   // 入口
-  entry: './src/index.ts', 
+  entry: './src/index.js', 
   // 出口
   output: {
     // 打包文件夹
@@ -17,4 +22,10 @@ module.exports = {
     // 打包生成库可以通过esm/commonjs/reqirejs的语法引入
     libraryTarget: 'umd', 
   },
+  module: { //要打包的第三方模块
+    rules: [
+      { test: /\.js|jsx$/, use: 'babel-loader', 
+      exclude: /node_modules/ }
+    ]
+  }
 }

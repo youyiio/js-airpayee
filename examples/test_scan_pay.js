@@ -11,6 +11,6 @@ const attach = 'attach信息';
 const authCode = '';
 
 
-paySdk.scanPay(body, amount, attach, authCode, function(err, response) {
+paySdk.scanpay(body, amount, attach, authCode, function(err, response) {
     console.log('扫码收款：', response);
 });

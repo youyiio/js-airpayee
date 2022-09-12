@@ -5,6 +5,8 @@ import md5 from 'md5-node';
 
 import default_config from './config.js';
 
+import querystring from 'querystringify';
+
 class PaySdk {
     static PAY_CHANNEL_WXPAY = 1;
     static PAY_CHANNEL_ALIPAY = 2;
@@ -73,13 +75,13 @@ class PaySdk {
 
     /**
      * 扫码枪收款
-     * @param {string} body 
-     * @param {int} amount 
-     * @param {string} attach 
-     * @param {string} authCode 
-     * @param {function} callback 
+     * @param {string} body 商品描述
+     * @param {number} amount 总费用，单位分
+     * @param {string} attach 附加信息，回调或异步通知时原格式回传
+     * @param {string} authCode 授权码，付款码的信息
+     * @param {function} callback 回调函数
      */
-    scanPay(body, amount, attach, authCode, callback) {
+    scanpay(body, amount, attach, authCode, callback) {
         let params = {
             'method': PaySdk.scanpay_method,
             'mch_no': this.config['mch_no'],
@@ -105,28 +107,339 @@ class PaySdk {
         
     }
 
-    webPay() {
+    /**
+     * 网页web支付，当前支持PC浏览器，移动浏览器；
+     * @param {string} mchOrderId 商户订单号
+     * @param {string} body 商品描述
+     * @param {number} amount 总费用，单位分
+     * @param {string} attach 附加信息，回调或异步通知时原格式回传
+     * @param {number} payChannel 支付渠道
+     * @param {string} returnUrl 回调同步通知地址，公网可访问
+     * @param {string} notifyUrl 异步通知地址，公网可访问
+     * @param {object} response http response
+     */
+    webpay(mchOrderId, body, amount, attach, payChannel, returnUrl, notifyUrl, response) {
+        let params = {
+            'method': PaySdk.webpay_method,
+            'mch_no': this.config['mch_no'],
+            'request_time': this.createRequestTime(),
+            'sign': '',
+        };
 
+        let bizParams = {
+            'mch_order_id': mchOrderId,
+            'pay_channel': payChannel,
+            'pay_product': 'web',
+            'body': body,
+            'amount': amount,
+            'attach': attach,            
+            'return_url': returnUrl,
+            'notify_url': notifyUrl
+        };
+
+        params = _.assign(params, bizParams);
+        let sign = this.sign_params(params, this.config['secret_key']);
+        params['sign'] = sign;
+
+        let redirectUrl = this.config['unify_gateway_url'] + '?' + querystring.stringify(params);
+        response.redirect(redirectUrl);
+        response.end();
     }
 
-    prepareOrder() {
+    /**
+     * 公众号/生活号支付，当前支持微信、支付宝内部浏览器；
+     * @param {string} mchOrderId 商户订单号
+     * @param {string} body 商品描述
+     * @param {number} amount 总费用，单位分
+     * @param {string} attach 附加信息，回调或异步通知时原格式回传
+     * @param {number} payChannel 支付渠道
+     * @param {string} returnUrl 回调同步通知地址，公网可访问
+     * @param {string} notifyUrl 异步通知地址，公网可访问
+     * @param {string} openId 公众号/生活号的openid/buyerid
+     * @param {object} response http response
+     */
+    pubpay(mchOrderId, body, amount, attach, payChannel, returnUrl, notifyUrl, openId, response) {
+        let params = {
+            'method': PaySdk.pubpay_method,
+            'mch_no': this.config['mch_no'],
+            'request_time': this.createRequestTime(),
+            'sign': '',
+        };
 
+        let bizParams = {
+            'mch_order_id': mchOrderId,
+            'pay_channel': payChannel,
+            'pay_product': 'pub',
+            'body': body,
+            'amount': amount,
+            'attach': attach,            
+            'return_url': returnUrl,
+            'notify_url': notifyUrl
+        };
+        if (openId != null && openId.length() != 0) {
+            bizParams['open_id'] = openId;
+        }
+
+        params = _.assign(params, bizParams);
+        let sign = this.sign_params(params, this.config['secret_key']);
+        params['sign'] = sign;
+
+        let redirectUrl = this.config['unify_gateway_url'] + '?' + querystring.stringify(params);
+        response.redirect(redirectUrl);
+        response.end();
     }
 
-    queryOrder() {
+    /**
+     * 小程序支付, 微信小程序/支付宝小程序
+     * @param {*} mchOrderId 
+     * @param {*} body 
+     * @param {*} amount 
+     * @param {*} attach 
+     * @param {*} payChannel 
+     * @param {*} notifyUrl 
+     * @param {*} openId 
+     * @param {*} callback 
+     */
+    litpPay(mchOrderId, body, amount, attach , payChannel, notifyUrl, openId, callback) {
+        let params = {
+            'method': PaySdk.litepay_method,
+            'mch_no': this.config['mch_no'],
+            'request_time': this.createRequestTime(),
+            'sign': '',
+        };
 
+        let bizParams = {
+            'mch_order_id': mchOrderId,
+            'pay_channel': payChannel,
+            'pay_product': 'lite',
+            'body': body,
+            'amount': amount,
+            'attach': attach,            
+            'return_url': returnUrl,
+            'notify_url': notifyUrl
+        };
+        if (openId != null && openId.length() != 0) {
+            bizParams['open_id'] = openId;
+        }
+
+        params = _.assign(params, bizParams);
+        let sign = this.sign_params(params, this.config['secret_key']);
+        params['sign'] = sign;
+
+        this.http_post(this.config['unify_gateway_url'], params, function(err, response) {
+            console.log(response);
+            callback(err, response);
+        });
     }
 
-    refundOrder() {
+    /**
+     * App支付
+     * @param {string} mchOrderId 
+     * @param {string} body 
+     * @param {number} amount 
+     * @param {string} attach 
+     * @param {number} payChannel 
+     * @param {string} notifyUrl 
+     * @param {function} callback 
+     */
+    apppay(mchOrderId, body, amount, attach, payChannel, notifyUrl, callback) {
+        let params = {
+            'method': PaySdk.apppay_method,
+            'mch_no': this.config['mch_no'],
+            'request_time': this.createRequestTime(),
+            'sign': '',
+        };
 
+        let bizParams = {
+            'mch_order_id': mchOrderId,
+            'pay_channel': payChannel,
+            'pay_product': 'app',
+            'body': body,
+            'amount': amount,
+            'attach': attach,
+            'notify_url': notifyUrl
+        };
+
+        params = _.assign(params, bizParams);
+        let sign = this.sign_params(params, this.config['secret_key']);
+        params['sign'] = sign;
+
+        this.http_post(this.config['unify_gateway_url'], params, function(err, response) {
+            console.log(response);
+            callback(err, response);
+        });
     }
 
-    cancelOrder() {
+    /**
+     * h5支付，
+     * @param {*} mchOrderId 
+     * @param {*} body 
+     * @param {*} amount 
+     * @param {*} attach 
+     * @param {*} payChannel 
+     * @param {*} notifyUrl 
+     * @param {*} openId 
+     * @param {*} response 
+     */
+    h5pay(mchOrderId, body, amount, attach, payChannel, notifyUrl, openId, response) {
+        let params = {
+            'method': PaySdk.h5pay_method,
+            'mch_no': this.config['mch_no'],
+            'request_time': this.createRequestTime(),
+            'sign': '',
+        };
 
+        let bizParams = {
+            'mch_order_id': mchOrderId,
+            'pay_channel': payChannel,
+            'pay_product': 'h5',
+            'body': body,
+            'amount': amount,
+            'attach': attach,            
+            'notify_url': notifyUrl
+        };
+        if (openId != null && openId.length() != 0) {
+            bizParams['open_id'] = openId;
+        }
+
+        params = _.assign(params, bizParams);
+        let sign = this.sign_params(params, this.config['secret_key']);
+        params['sign'] = sign;
+
+        let redirectUrl = this.config['unify_gateway_url'] + '?' + querystring.stringify(params);
+        response.redirect(redirectUrl);
+        response.end();
+    }
+
+    /**
+     * 预下单接口
+     * @param {*} mchOrderId 
+     * @param {*} body 
+     * @param {*} amount 
+     * @param {*} attach 
+     * @param {*} payChannel 
+     * @param {*} payProduct 
+     * @param {*} returnUrl 
+     * @param {*} notifyUrl 
+     * @param {*} openId 
+     * @param {function} callback 
+     */
+    prepareOrder(mchOrderId, body, amount, attach , payChannel, payProduct, returnUrl, notifyUrl, openId = '', callback) {
+        let params = {
+            'method': PaySdk.prepayorder_method,
+            'mch_no': this.config['mch_no'],
+            'request_time': this.createRequestTime(),
+            'sign': '',
+        };
+
+        let bizParams = {
+            'mch_order_id': mchOrderId,
+            'pay_channel': payChannel,
+            'pay_product': payProduct,
+            'body': body,
+            'amount': amount,
+            'attach': attach,            
+            'returnUrl': returnUrl,   
+            'notify_url': notifyUrl
+        };
+        if (openId != null && openId.length() != 0) {
+            bizParams['open_id'] = openId;
+        }
+
+        params = _.assign(params, bizParams);
+        let sign = this.sign_params(params, this.config['secret_key']);
+        params['sign'] = sign;
+
+        this.http_post(this.config['unify_gateway_url'], params, function(err, response) {
+            console.log(response);
+            callback(err, response);
+        });
+    }
+
+    /**
+     * 查询订单
+     * @param string ourOrderId 
+     * @param {function} callback 
+     */
+    queryOrder(ourOrderId, callback) {
+        let params = {
+            'method': PaySdk.queryorder_method,
+            'mch_no': this.config['mch_no'],
+            'request_time': this.createRequestTime(),
+            'sign': '',
+        };
+
+        let bizParams = {
+            'our_order_id': ourOrderId,
+        };
+
+        params = _.assign(params, bizParams);
+        let sign = this.sign_params(params, this.config['secret_key']);
+        params['sign'] = sign;
+
+        this.http_post(this.config['unify_gateway_url'], params, function(err, response) {
+            console.log(response);
+            callback(err, response);
+        });
+    }
+
+    refundOrder(ourOrderId, callback) {
+        let params = {
+            'method': PaySdk.refundorder_method,
+            'mch_no': this.config['mch_no'],
+            'request_time': this.createRequestTime(),
+            'sign': '',
+        };
+
+        let bizParams = {
+            'our_order_id': ourOrderId,
+        };
+
+        params = _.assign(params, bizParams);
+        let sign = this.sign_params(params, this.config['secret_key']);
+        params['sign'] = sign;
+
+        this.http_post(this.config['unify_gateway_url'], params, function(err, response) {
+            console.log(response);
+            callback(err, response);
+        });
+    }
+
+    cancelOrder(ourOrderId, callback) {
+        let params = {
+            'method': PaySdk.cancelorder_method,
+            'mch_no': this.config['mch_no'],
+            'request_time': this.createRequestTime(),
+            'sign': '',
+        };
+
+        let bizParams = {
+            'our_order_id': ourOrderId,
+        };
+
+        params = _.assign(params, bizParams);
+        let sign = this.sign_params(params, this.config['secret_key']);
+        params['sign'] = sign;
+
+        this.http_post(this.config['unify_gateway_url'], params, function(err, response) {
+            console.log(response);
+            callback(err, response);
+        });
     }
 
     http_post(url, params, callback) {
         axios.post(url, params).then(response => {
+            console.log(response.data);
+            callback(null, response.data);
+        }).catch((error) => {
+            console.log(error);
+            callback(error, null);
+        });
+        
+    }
+
+    http_get(url, params, callback) {
+        axios.get(url, params).then(response => {
             console.log(response.data);
             callback(null, response.data);
         }).catch((error) => {
@@ -157,7 +470,7 @@ class PaySdk {
     }
 
     createNonceStr = function () {
-        return Math.random().toString(36).substr(2, 15);
+        return Math.random().toString(36).substring(2, 15);
     };
       
     createRequestTime() { 
