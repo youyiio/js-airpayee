@@ -1,7 +1,7 @@
 {
   "name": "js-airpayee",
   "version": "1.0.0",
-  "description": "AirPayee支付的JavaScript/TypeScript开发库",
+  "description": "壹收银【AirPayee】支付的JavaScript/TypeScript开发库",
   "type": "module",
   "main": "index.js",
   "scripts": {
